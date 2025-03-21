@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>学童クラブ入退室管理</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <h1>学童クラブ入退室管理</h1>
+  
+  <div id="login-container">
+    <h2>ログイン</h2>
+    <input type="email" id="email" placeholder="メールアドレス" />
+    <input type="password" id="password" placeholder="パスワード" />
+    <button id="login-btn">ログイン</button>
+  </div>
+
+  <div id="dashboard" style="display:none;">
+    <h2>入退室管理</h2>
+    <select id="child-select"></select>
+    <button id="checkin-btn">入室</button>
+    <button id="checkout-btn">退室</button>
+    <button id="logout-btn">ログアウト</button>
+
+    <h2>入退室履歴</h2>
+    <ul id="history"></ul>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
