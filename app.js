@@ -77,7 +77,7 @@ const checkinBtn = document.getElementById('checkin-btn');
 checkinBtn.addEventListener('click', async () => {
   const childId = document.getElementById('child-select').value;
   try {
-    await addDoc(collection(db, 'attendance'), {
+    await addDoc(collection(db, 'attendance2'), {
       childId,
       type: 'checkin',
       timestamp: serverTimestamp()
@@ -93,7 +93,7 @@ const checkoutBtn = document.getElementById('checkout-btn');
 checkoutBtn.addEventListener('click', async () => {
   const childId = document.getElementById('child-select').value;
   try {
-    await addDoc(collection(db, 'attendance'), {
+    await addDoc(collection(db, 'attendance2'), {
       childId,
       type: 'checkout',
       timestamp: serverTimestamp()
