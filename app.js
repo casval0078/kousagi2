@@ -61,7 +61,7 @@ checkinBtn.addEventListener('click', async () => {
   const childName = childSelect.value;
   if (!childName) return alert('児童を選択してください');
   try {
-    await addDoc(collection(db, 'attendance'), {
+    await addDoc(collection(db, 'attendance2'), {
       name: childName,
       type: 'check-in',
       timestamp: serverTimestamp()
@@ -78,7 +78,7 @@ checkoutBtn.addEventListener('click', async () => {
   const childName = childSelect.value;
   if (!childName) return alert('児童を選択してください');
   try {
-    await addDoc(collection(db, 'attendance'), {
+    await addDoc(collection(db, 'attendance2'), {
       name: childName,
       type: 'check-out',
       timestamp: serverTimestamp()
@@ -135,7 +135,7 @@ async function loadChildren() {
 // 入退室履歴の読み込み
 async function loadHistory() {
   try {
-    const querySnapshot = await getDocs(collection(db, 'attendance'));
+    const querySnapshot = await getDocs(collection(db, 'attendance2'));
     historyList.innerHTML = '';
     querySnapshot.forEach(doc => {
       const li = document.createElement('li');
