@@ -16,106 +16,146 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// ログイン処理
-const loginBtn = document.getElementById('login-btn');
-const logoutBtn = document.getElementById('logout-btn');
+// DOM要素
+const loginContainer = document.getElementById('login-container');
+const dashboard = document.getElementById('dashboard');
 const emailInput = document.getElementById('email');
 const passwordInput = document.getElementById('password');
+const loginBtn = document.getElementById('login-btn');
+const logoutBtn = document.getElementById('logout-btn');
+const checkinBtn = document.getElementById('checkin-btn');
+const checkoutBtn = document.getElementById('checkout-btn');
+const childSelect = document.getElementById('child-select');
+const historyList = document.getElementById('history');
+const childNameInput = document.getElementById('child-name');
+const addChildBtn = document.getElementById('add-child-btn');
+const removeChildBtn = document.getElementById('remove-child-btn');
 
+// ログイン処理
 loginBtn.addEventListener('click', async () => {
   const email = emailInput.value;
   const password = passwordInput.value;
   try {
-    await signInWithEmailAndPassword(auth, email, password);
-    console.log('ログイン成功');
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    alert('ログイン成功');
+    showDashboard();
+    loadChildren();
   } catch (error) {
-    console.error('ログイン失敗', error);
-    alert('ログインに失敗しました。');
+    alert('ログイン失敗: ' + error.message);
   }
 });
 
+// ログアウト処理
 logoutBtn.addEventListener('click', async () => {
   try {
     await signOut(auth);
-    console.log('ログアウトしました');
+    alert('ログアウトしました');
+    showLogin();
   } catch (error) {
-    console.error('ログアウト失敗', error);
+    alert('ログアウト失敗: ' + error.message);
   }
 });
-
-// 認証状態の監視
-onAuthStateChanged(auth, (user) => {
-  if (user) {
-    document.getElementById('login-container').style.display = 'none';
-    document.getElementById('dashboard').style.display = 'block';
-    loadChildren();
-    loadHistory();
-  } else {
-    document.getElementById('login-container').style.display = 'block';
-    document.getElementById('dashboard').style.display = 'none';
-  }
-});
-
-// 児童一覧読み込み
-async function loadChildren() {
-  const childSelect = document.getElementById('child-select');
-  childSelect.innerHTML = '';
-
-  const q = query(collection(db, 'children'));
-  const querySnapshot = await onSnapshot(q, (snapshot) => {
-    snapshot.forEach((doc) => {
-      const option = document.createElement('option');
-      option.value = doc.id;
-      option.textContent = doc.data().name;
-      childSelect.appendChild(option);
-    });
-  });
-}
 
 // 入室処理
-const checkinBtn = document.getElementById('checkin-btn');
 checkinBtn.addEventListener('click', async () => {
-  const childId = document.getElementById('child-select').value;
+  const childName = childSelect.value;
+  if (!childName) return alert('児童を選択してください');
   try {
-    await addDoc(collection(db, 'attendance2'), {
-      childId,
-      type: 'checkin',
+    await addDoc(collection(db, 'attendance'), {
+      name: childName,
+      type: 'check-in',
       timestamp: serverTimestamp()
     });
-    alert('入室を記録しました');
+    alert('入室記録を保存しました');
+    loadHistory();
   } catch (error) {
-    console.error('入室記録失敗', error);
+    alert('入室記録失敗: ' + error.message);
   }
 });
 
 // 退室処理
-const checkoutBtn = document.getElementById('checkout-btn');
 checkoutBtn.addEventListener('click', async () => {
-  const childId = document.getElementById('child-select').value;
+  const childName = childSelect.value;
+  if (!childName) return alert('児童を選択してください');
   try {
-    await addDoc(collection(db, 'attendance2'), {
-      childId,
-      type: 'checkout',
+    await addDoc(collection(db, 'attendance'), {
+      name: childName,
+      type: 'check-out',
       timestamp: serverTimestamp()
     });
-    alert('退室を記録しました');
+    alert('退室記録を保存しました');
+    loadHistory();
   } catch (error) {
-    console.error('退室記録失敗', error);
+    alert('退室記録失敗: ' + error.message);
   }
 });
 
-// 入退室履歴表示
-async function loadHistory() {
-  const historyList = document.getElementById('history');
-  historyList.innerHTML = '';
+// 児童追加処理
+addChildBtn.addEventListener('click', async () => {
+  const childName = childNameInput.value.trim();
+  if (!childName) return alert('児童名を入力してください');
+  try {
+    await setDoc(doc(db, 'children', childName), { name: childName });
+    alert('児童を追加しました');
+    loadChildren();
+  } catch (error) {
+    alert('児童追加失敗: ' + error.message);
+  }
+});
 
-  const q = query(collection(db, 'attendance'), orderBy('timestamp', 'desc'));
-  onSnapshot(q, (snapshot) => {
+// 児童削除処理
+removeChildBtn.addEventListener('click', async () => {
+  const childName = childSelect.value;
+  if (!childName) return alert('児童を選択してください');
+  try {
+    await deleteDoc(doc(db, 'children', childName));
+    alert('児童を削除しました');
+    loadChildren();
+  } catch (error) {
+    alert('児童削除失敗: ' + error.message);
+  }
+});
+
+// 児童リストの読み込み
+async function loadChildren() {
+  try {
+    const querySnapshot = await getDocs(collection(db, 'children'));
+    childSelect.innerHTML = '<option value="">児童を選択</option>';
+    querySnapshot.forEach(doc => {
+      const option = document.createElement('option');
+      option.value = doc.data().name;
+      option.textContent = doc.data().name;
+      childSelect.appendChild(option);
+    });
+  } catch (error) {
+    alert('児童リスト取得失敗: ' + error.message);
+  }
+}
+
+// 入退室履歴の読み込み
+async function loadHistory() {
+  try {
+    const querySnapshot = await getDocs(collection(db, 'attendance'));
     historyList.innerHTML = '';
-    snapshot.forEach((doc) => {
+    querySnapshot.forEach(doc => {
       const li = document.createElement('li');
-      li.textContent = `${doc.data().childId} - ${doc.data().type} - ${doc.data().timestamp?.toDate()}`;
+      li.textContent = `${doc.data().name} - ${doc.data().type === 'check-in' ? '入室' : '退室'} - ${new Date(doc.data().timestamp?.toDate()).toLocaleString()}`;
       historyList.appendChild(li);
     });
-  });
-} 
+  } catch (error) {
+    alert('履歴取得失敗: ' + error.message);
+  }
+}
+
+// 表示切り替え
+function showDashboard() {
+  loginContainer.style.display = 'none';
+  dashboard.style.display = 'block';
+}
+
+function showLogin() {
+  loginContainer.style.display = 'block';
+  dashboard.style.display = 'none';
+}
+
+showLogin();
