@@ -3,30 +3,34 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>学童クラブ入退室管理</title>
   <link rel="stylesheet" href="style.css" />
+  <title>学童クラブ入退室管理</title>
 </head>
 <body>
-  <h1>学童クラブ入退室管理</h1>
-  
-  <div id="login-container">
-    <h2>ログイン</h2>
-    <input type="email" id="email" placeholder="メールアドレス" />
-    <input type="password" id="password" placeholder="パスワード" />
-    <button id="login-btn">ログイン</button>
+  <div class="container" id="login-container">
+    <h1>ログイン</h1>
+    <input type="text" id="login-email" placeholder="メールアドレス" />
+    <input type="password" id="login-password" placeholder="パスワード" />
+    <button onclick="login()">ログイン</button>
+    <p class="error" id="login-error"></p>
   </div>
 
-  <div id="dashboard" style="display:none;">
+  <div class="container" id="admin-container" style="display:none;">
+    <h1>管理画面</h1>
+    <h2>児童追加</h2>
+    <input type="text" id="child-name" placeholder="児童名" />
+    <button onclick="addChild()">追加</button>
+
+    <h2>児童リスト</h2>
+    <ul id="children-list"></ul>
+
     <h2>入退室管理</h2>
-    <select id="child-select"></select>
-    <button id="checkin-btn">入室</button>
-    <button id="checkout-btn">退室</button>
-    <button id="logout-btn">ログアウト</button>
-
-    <h2>入退室履歴</h2>
-    <ul id="history"></ul>
+    <button onclick="loadChildren()">更新</button>
   </div>
 
-  <script type="module" src="app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
