@@ -1,3 +1,8 @@
+// Firebase 初期化
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
 const firebaseConfig = {
   apiKey: "AIzaSyDPUoZSZCBmJi7yMtIp6apBEfEJqIJWZRY",
   authDomain: "kousagi-2e126.firebaseapp.com",
@@ -7,56 +12,56 @@ const firebaseConfig = {
   appId: "1:379985487644:web:e8ca61a2fb7cbc2fc37cd9"
 };
 
-// Firebase 初期化
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
 // ログイン処理
-function login() {
-  const email = document.getElementById('login-email').value;
-  const password = document.getElementById('login-password').value;
-
-  auth.signInWithEmailAndPassword(email, password)
-    .then(() => {
-      document.getElementById('login-container').style.display = 'none';
-      document.getElementById('admin-container').style.display = 'block';
-      loadChildren();
-    })
-    .catch(error => {
-      document.getElementById('login-error').innerText = error.message;
-    });
+async function login() {
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+    alert('ログイン成功');
+    window.location.href = 'dashboard.html';
+  } catch (error) {
+    alert(`エラー: ${error.message}`);
+  }
 }
 
-// 児童追加
-function addChild() {
-  const name = document.getElementById('child-name').value;
-  if (!name) return;
+document.getElementById('login-btn')?.addEventListener('click', login);
 
-  const childID = `user${Date.now()}`;
-  db.collection('children').doc(childID).set({ name })
-    .then(() => {
-      alert('児童を追加しました');
-      loadChildren();
-    })
-    .catch(error => {
-      console.error('Error adding child:', error);
+// ログアウト処理
+async function logout() {
+  try {
+    await signOut(auth);
+    alert('ログアウトしました');
+    window.location.href = 'index.html';
+  } catch (error) {
+    alert(`エラー: ${error.message}`);
+  }
+}
+document.getElementById('logout-btn')?.addEventListener('click', logout);
+
+// 児童リストの取得
+async function fetchChildren() {
+  const childrenList = document.getElementById('children-list');
+  childrenList.innerHTML = '';
+
+  try {
+    const querySnapshot = await getDocs(collection(db, 'children'));
+    querySnapshot.forEach((doc) => {
+      const childData = doc.data();
+      const li = document.createElement('li');
+      li.textContent = childData.name;
+      childrenList.appendChild(li);
     });
+  } catch (error) {
+    console.error('エラー:', error);
+  }
 }
 
-// 児童リスト取得
-function loadChildren() {
-  db.collection('children').get()
-    .then((querySnapshot) => {
-      const list = document.getElementById('children-list');
-      list.innerHTML = '';
-      querySnapshot.forEach((doc) => {
-        const li = document.createElement('li');
-        li.textContent = `${doc.data().name} (${doc.id})`;
-        list.appendChild(li);
-      });
-    })
-    .catch((error) => {
-      console.error('Error loading children:', error);
-    });
-}
+// 初期ロード
+if (window.location.pathname.includes('dashboard.html')) {
+  fetchChildren();
+} 
