@@ -54,3 +54,51 @@ button {
 button:hover {
     background-color: #45a049;
 }
+
+/* ドロップダウンメニュー */
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: #f1f1f1;
+    min-width: 160px;  /* 最小幅を設定 */
+    box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.2);
+    z-index: 1;
+    padding: 10px 0;  /* 上下にパディングを追加 */
+}
+
+.dropdown:hover .dropdown-content {
+    display: block;
+}
+
+.dropdown-content a {
+    color: black;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+    font-size: 14px;  /* フォントサイズを調整 */
+}
+
+.dropdown-content a:hover {
+    background-color: #ddd;
+}
+
+/* ログアウトボタン */
+button.logout {
+    background-color: #777; /* 落ち着いたグレー */
+    color: white;
+    padding: 8px 16px;
+    font-size: 14px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+button.logout:hover {
+    background-color: #555; /* ホバー時に少し暗くなる */
+}
