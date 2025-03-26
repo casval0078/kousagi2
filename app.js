@@ -4,12 +4,14 @@ import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstati
 import { getFirestore, collection, addDoc, getDocs, updateDoc, doc, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyDPUoZSZCBmJi7yMtIp6apBEfEJqIJWZRY",
+  authDomain: "kousagi-2e126.firebaseapp.com",
+  databaseURL: "https://kousagi-2e126-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "kousagi-2e126",
+  storageBucket: "kousagi-2e126.firebasestorage.app",
+  messagingSenderId: "379985487644",
+  appId: "1:379985487644:web:e8ca61a2fb7cbc2fc37cd9",
+  measurementId: "G-DB225BE3JD"
 };
 
 const app = initializeApp(firebaseConfig);
