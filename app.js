@@ -19,16 +19,18 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 // ログイン処理
-async function login() {
-  const email = document.getElementById('email').value;
-  const password = document.getElementById('password').value;
+function login() {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
 
-  try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    window.location.href = 'dashboard.html';
-  } catch (error) {
-    alert(error.message);
-  }
+  signInWithEmailAndPassword(auth, email, password)
+    .then(() => {
+      alert("ログイン成功！");
+      window.location.href = "dashboard.html"; // 画面遷移
+    })
+    .catch((error) => {
+      alert("ログイン失敗: " + error.message);
+    });
 }
 
 document.getElementById('login-btn').onclick = login;
