@@ -1,7 +1,7 @@
-// Firebase初期化
+// Firebase設定
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { getFirestore, collection, addDoc, getDocs, updateDoc, doc, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDPUoZSZCBmJi7yMtIp6apBEfEJqIJWZRY",
@@ -19,58 +19,28 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 // ログイン処理
-function login() {
+document.getElementById("login").addEventListener("click", () => {
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
 
   signInWithEmailAndPassword(auth, email, password)
-    .then(() => {
-      alert("ログイン成功！");
-      window.location.href = "dashboard.html"; // 画面遷移
+    .then(async (userCredential) => {
+      const user = userCredential.user;
+
+      // Firestoreでユーザー情報を取得
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        if (userData.role === "admin") {
+          window.location.href = "admin.html";
+        } else {
+          window.location.href = "parent.html";
+        }
+      } else {
+        alert("ユーザーデータが見つかりません。");
+      }
     })
     .catch((error) => {
       alert("ログイン失敗: " + error.message);
     });
-}
-
-document.getElementById('login-btn').onclick = login;
-
-// ログアウト処理
-async function logout() {
-  await signOut(auth);
-  window.location.href = 'index.html';
-}
-document.getElementById('logout-btn')?.addEventListener('click', logout);
-
-// 入退室記録
-async function recordAttendance(type) {
-  const childID = document.getElementById('child-select').value;
-  if (!childID) return alert('児童を選択してください');
-
-  try {
-    await addDoc(collection(db, 'attendance2'), {
-      childID: childID,
-      type: type,
-      timestamp: serverTimestamp()
-    });
-    alert(`${type === 'checkin' ? '入室' : '退室'}が記録されました。`);
-  } catch (error) {
-    alert(error.message);
-  }
-}
-document.getElementById('checkin-btn')?.addEventListener('click', () => recordAttendance('checkin'));
-document.getElementById('checkout-btn')?.addEventListener('click', () => recordAttendance('checkout'));
-
-// 児童リスト表示
-async function loadChildren() {
-  const childSelect = document.getElementById('child-select');
-  const querySnapshot = await getDocs(collection(db, 'children'));
-
-  querySnapshot.forEach(doc => {
-    const option = document.createElement('option');
-    option.value = doc.id;
-    option.textContent = doc.data().name;
-    childSelect.appendChild(option);
-  });
-}
-document.addEventListener('DOMContentLoaded', loadChildren);
+});
