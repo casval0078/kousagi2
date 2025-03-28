@@ -4,19 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>学童クラブ入退室管理</title>
-  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="container">
-    <h1>学童クラブ入退室管理システム</h1>
-    <input type="email" id="email" placeholder="メールアドレス" />
-    <input type="password" id="password" placeholder="パスワード" />
-    <button onclick="login()">ログイン</button>
-    <p id="error" class="error"></p>
-  </div>
+  <h1>ログイン</h1>
+  <input type="email" id="email" placeholder="メールアドレス" />
+  <input type="password" id="password" placeholder="パスワード" />
+  <button id="login">ログイン</button>
 
-  <script type="module" src="https://www.gstatic.com/firebasejs/10.10.0/firebase-app.js"></script>
-  <script type="module" src="https://www.gstatic.com/firebasejs/10.10.0/firebase-auth.js"></script>
   <script type="module" src="app.js"></script>
 </body>
 </html>
