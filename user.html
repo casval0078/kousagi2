@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>児童ステータス管理（保護者用）</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    .child-box { border: 1px solid #ccc; padding: 10px; margin-bottom: 15px; border-radius: 8px; }
+    button { margin: 5px; padding: 5px 10px; }
+    h2 { margin-bottom: 5px; }
+  </style>
+</head>
+<body>
+  <h1>児童ステータス管理（保護者用）</h1>
+  <div id="childrenContainer">読み込み中...</div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDPUoZSZCBmJi7yMtIp6apBEfEJqIJWZRY",
+      authDomain: "kousagi-2e126.firebaseapp.com",
+      projectId: "kousagi-2e126"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) {
+        alert("ログインしてください");
+        location.href = "login.html";
+        return;
+      }
+
+      const uid = user.uid;
+      const userDoc = await db.collection("users").doc(uid).get();
+      const childrenNames = userDoc.data().children;
+
+      const childrenSnapshot = await db.collection("children").get();
+      const container = document.getElementById("childrenContainer");
+      container.innerHTML = "";
+
+      childrenSnapshot.forEach(doc => {
+        const data = doc.data();
+        if (!childrenNames.includes(data.name)) return;
+
+        const div = document.createElement("div");
+        div.className = "child-box";
+        div.innerHTML = `
+          <h2>${data.name}</h2>
+          <p>現在のステータス：<strong id="status-${doc.id}">${data.status}</strong></p>
+          <button onclick="updateStatus('${doc.id}', '入室')">入室</button>
+          <button onclick="updateStatus('${doc.id}', '退室')">退室</button>
+          <button onclick="updateStatus('${doc.id}', '欠席')">欠席</button>
+        `;
+        container.appendChild(div);
+      });
+    });
+
+    async function updateStatus(childId, newStatus) {
+      const now = new Date();
+      const dateStr = now.toISOString().split('T')[0];
+      const timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+
+      const childRef = db.collection("children").doc(childId);
+      await childRef.update({
+        status: newStatus,
+        lastUpdated: `${dateStr} ${timeStr}`
+      });
+
+      await childRef.collection("attendance").doc(dateStr).set({
+        entryTime: newStatus === "入室" ? timeStr : firebase.firestore.FieldValue.delete(),
+        exitTime: newStatus === "退室" ? timeStr : firebase.firestore.FieldValue.delete(),
+        status: newStatus
+      }, { merge: true });
+
+      document.getElementById(`status-${childId}`).textContent = newStatus;
+      alert(`${newStatus}を登録しました`);
+    }
+  </script>
+</body>
+</html>
