@@ -1,26 +1,102 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>ログインページ</title>
+  <title>ログインページ - こうさぎクラブ</title>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <style>
-    body { font-family: sans-serif; padding: 20px; }
-    input, button { margin: 8px; padding: 6px; }
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background: #f1f4f9;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .login-container {
+      background: white;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      width: 360px;
+      text-align: center;
+    }
+
+    .login-container h1 {
+      margin-bottom: 10px;
+      font-size: 24px;
+      color: #333;
+    }
+
+    .login-container p {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 20px;
+    }
+
+    input[type="email"],
+    input[type="password"] {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+      font-size: 14px;
+    }
+
+    button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      background-color: #1976d2;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #1565c0;
+    }
+
+    .error-message {
+      color: red;
+      font-size: 14px;
+      margin-top: 10px;
+    }
+
+    footer {
+      margin-top: 20px;
+      font-size: 12px;
+      color: #aaa;
+    }
   </style>
 </head>
 <body>
-  <h1>ログイン</h1>
-  <form id="loginForm">
-    <input type="email" id="email" placeholder="メールアドレス" required><br>
-    <input type="password" id="password" placeholder="パスワード" required><br>
-    <button type="submit">ログイン</button>
-  </form>
+  <div class="login-container">
+    <h1>こうさぎクラブ ログイン</h1>
+    <p>管理者または保護者としてログインしてください。</p>
+
+    <form id="loginForm">
+      <input type="email" id="email" placeholder="メールアドレス" required>
+      <input type="password" id="password" placeholder="パスワード" required>
+      <button type="submit">ログイン</button>
+    </form>
+
+    <div class="error-message" id="errorMsg"></div>
+
+    <footer>
+      &copy; 2025 学童クラブシステム
+    </footer>
+  </div>
 
   <script>
-    // Firebase初期化
     const firebaseConfig = {
       apiKey: "AIzaSyDPUoZSZCBmJi7yMtIp6apBEfEJqIJWZRY",
       authDomain: "kousagi-2e126.firebaseapp.com",
@@ -30,11 +106,12 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    // ログイン処理
     document.getElementById("loginForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const email = document.getElementById("email").value;
       const password = document.getElementById("password").value;
+      const errorMsg = document.getElementById("errorMsg");
+      errorMsg.textContent = "";
 
       try {
         const userCredential = await auth.signInWithEmailAndPassword(email, password);
@@ -42,7 +119,7 @@
 
         const userDoc = await db.collection("users").doc(uid).get();
         if (!userDoc.exists) {
-          alert("ユーザー情報が見つかりません");
+          errorMsg.textContent = "ユーザー情報が見つかりません。";
           return;
         }
 
@@ -52,10 +129,10 @@
         } else if (role === "user") {
           window.location.href = "user.html";
         } else {
-          alert("不明なロールです: " + role);
+          errorMsg.textContent = "不明なロールです: " + role;
         }
       } catch (error) {
-        alert("ログインエラー: " + error.message);
+        errorMsg.textContent = "ログインエラー: " + error.message;
       }
     });
   </script>
