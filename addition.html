@@ -24,6 +24,7 @@
     </div>
     <button type="button" onclick="addChildInput()">児童を追加</button><br>
     <button type="submit">登録</button>
+    <button type="button" onclick="deleteChildren()">削除</button>
   </form>
 
   <script>
@@ -56,11 +57,9 @@
       const childNames = [...document.querySelectorAll(".childName")].map(input => input.value);
 
       try {
-        // Firebase Auth にユーザー作成
         const userCredential = await auth.createUserWithEmailAndPassword(email, password);
         const uid = userCredential.user.uid;
 
-        // Firestore users に保護者情報追加
         await db.collection("users").doc(uid).set({
           name: parentName,
           email: email,
@@ -68,7 +67,6 @@
           children: childNames
         });
 
-        // Firestore children に連番付きで児童追加
         const childrenCol = db.collection("children");
         const snapshot = await childrenCol.get();
         let count = snapshot.size;
@@ -90,8 +88,45 @@
         alert("エラー：" + error.message);
       }
     });
-    
+
+    // 削除処理
+    async function deleteChildren() {
+      const parentName = document.getElementById("parentName").value;
+      const childNames = [...document.querySelectorAll(".childName")].map(input => input.value);
+
+      if (!parentName || childNames.length === 0) {
+        alert("保護者名と児童名を入力してください。");
+        return;
+      }
+
+      try {
+        const usersSnapshot = await db.collection("users").where("name", "==", parentName).get();
+        if (usersSnapshot.empty) {
+          alert("該当する保護者が見つかりません。");
+          return;
+        }
+
+        const parentUid = usersSnapshot.docs[0].id;
+
+        const childrenSnapshot = await db.collection("children").where("parentUid", "==", parentUid).get();
+        const targetChildren = childrenSnapshot.docs.filter(doc => childNames.includes(doc.data().name));
+
+        if (targetChildren.length === 0) {
+          alert("該当する児童が見つかりません。");
+          return;
+        }
+
+        for (const childDoc of targetChildren) {
+          await db.collection("children").doc(childDoc.id).delete();
+        }
+
+        alert("児童の削除が完了しました！");
+      } catch (error) {
+        alert("削除エラー：" + error.message);
+      }
+    }
   </script>
-  <a href= "admin.html" >戻る</a>
+
+  <a href="admin.html">戻る</a>
 </body>
 </html>
