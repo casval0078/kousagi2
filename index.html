@@ -1,16 +1,63 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>学童クラブ入退室管理</title>
+  <meta charset="UTF-8">
+  <title>ログインページ</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    input, button { margin: 8px; padding: 6px; }
+  </style>
 </head>
 <body>
   <h1>ログイン</h1>
-  <input type="email" id="email" placeholder="メールアドレス" />
-  <input type="password" id="password" placeholder="パスワード" />
-  <button id="login">ログイン</button>
+  <form id="loginForm">
+    <input type="email" id="email" placeholder="メールアドレス" required><br>
+    <input type="password" id="password" placeholder="パスワード" required><br>
+    <button type="submit">ログイン</button>
+  </form>
 
-  <script type="module" src="app.js"></script>
+  <script>
+    // Firebase初期化
+    const firebaseConfig = {
+      apiKey: "AIzaSyDPUoZSZCBmJi7yMtIp6apBEfEJqIJWZRY",
+      authDomain: "kousagi-2e126.firebaseapp.com",
+      projectId: "kousagi-2e126",
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // ログイン処理
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+
+      try {
+        const userCredential = await auth.signInWithEmailAndPassword(email, password);
+        const uid = userCredential.user.uid;
+
+        const userDoc = await db.collection("users").doc(uid).get();
+        if (!userDoc.exists) {
+          alert("ユーザー情報が見つかりません");
+          return;
+        }
+
+        const role = userDoc.data().role;
+        if (role === "admin") {
+          window.location.href = "admin.html";
+        } else if (role === "user") {
+          window.location.href = "user.html";
+        } else {
+          alert("不明なロールです: " + role);
+        }
+      } catch (error) {
+        alert("ログインエラー: " + error.message);
+      }
+    });
+  </script>
 </body>
 </html>
