@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>時間修正ページ</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 4px; text-align: center; }
+    th { background: #f0f0f0; }
+    select, button { margin: 10px 5px; padding: 5px; }
+  </style>
+</head>
+<body>
+  <h1>出退室時間修正</h1>
+  <label>表示月：
+    <input type="month" id="monthSelect">
+  </label>
+  <button onclick="downloadCSV()">CSV出力</button>
+  <div id="attendanceTable"></div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDPUoZSZCBmJi7yMtIp6apBEfEJqIJWZRY",
+      authDomain: "kousagi-2e126.firebaseapp.com",
+      projectId: "kousagi-2e126"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    const tableContainer = document.getElementById("attendanceTable");
+    const monthSelect = document.getElementById("monthSelect");
+
+    monthSelect.value = new Date().toISOString().slice(0, 7);
+    monthSelect.addEventListener("change", loadData);
+    window.addEventListener("load", loadData);
+
+    async function loadData() {
+      const month = monthSelect.value;
+      const year = month.split("-")[0];
+      const monthNum = parseInt(month.split("-")[1]);
+      const daysInMonth = new Date(year, monthNum, 0).getDate();
+
+      const childrenSnap = await db.collection("children").orderBy("name").get();
+      const children = childrenSnap.docs.map(doc => ({ id: doc.id, name: doc.data().name }));
+
+      const table = document.createElement("table");
+      let header = `<tr><th rowspan="2">日付</th>`;
+      children.forEach(child => header += `<th colspan="2">${child.name}</th>`);
+      header += `</tr><tr>`;
+      children.forEach(_ => header += `<th>入室</th><th>退室</th>`);
+      header += `</tr>`;
+      table.innerHTML = header;
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${year}-${String(monthNum).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${dateStr}</td>`;
+
+        for (const child of children) {
+          const docRef = db.collection("children").doc(child.id).collection("attendance").doc(dateStr);
+          const snap = await docRef.get();
+          const data = snap.exists ? snap.data() : {};
+
+          const entry = document.createElement("input");
+          entry.type = "text";
+          entry.value = data.entryTime || "";
+          entry.addEventListener("change", () => {
+            docRef.set({ entryTime: entry.value }, { merge: true });
+          });
+
+          const exit = document.createElement("input");
+          exit.type = "text";
+          exit.value = data.exitTime || "";
+          exit.addEventListener("change", () => {
+            docRef.set({ exitTime: exit.value }, { merge: true });
+          });
+
+          const td1 = document.createElement("td");
+          td1.appendChild(entry);
+          const td2 = document.createElement("td");
+          td2.appendChild(exit);
+          tr.appendChild(td1);
+          tr.appendChild(td2);
+        }
+        table.appendChild(tr);
+      }
+      tableContainer.innerHTML = "";
+      tableContainer.appendChild(table);
+    }
+
+    function downloadCSV() {
+      const rows = [];
+      const table = tableContainer.querySelector("table");
+      const trList = table.querySelectorAll("tr");
+      trList.forEach(tr => {
+        const cells = tr.querySelectorAll("th, td");
+        const row = [];
+        cells.forEach(cell => {
+          if (cell.querySelector("input")) {
+            row.push(cell.querySelector("input").value);
+          } else {
+            row.push(cell.textContent.trim());
+          }
+        });
+        rows.push(row.join(","));
+      });
+      const csvContent = '\uFEFF' + rows.join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `attendance_${monthSelect.value}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>
