@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>保護者登録フォーム</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    input, button { margin: 5px; padding: 5px; }
+  </style>
+</head>
+<body>
+  <h1>保護者登録</h1>
+  <form id="registerForm">
+    <div>
+      保護者名：<input type="text" id="parentName" required><br>
+      メールアドレス：<input type="email" id="email" required><br>
+      パスワード：<input type="password" id="password" required><br>
+    </div>
+    <div id="childrenInputs">
+      <label>児童名1：<input type="text" class="childName" required></label><br>
+    </div>
+    <button type="button" onclick="addChildInput()">児童を追加</button><br>
+    <button type="submit">登録</button>
+  </form>
+
+  <script>
+    // Firebase初期化
+    const firebaseConfig = {
+      apiKey: "AIzaSyDPUoZSZCBmJi7yMtIp6apBEfEJqIJWZRY",
+      authDomain: "kousagi-2e126.firebaseapp.com",
+      projectId: "kousagi-2e126",
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // 児童入力欄の追加
+    function addChildInput() {
+      const div = document.getElementById("childrenInputs");
+      const count = div.querySelectorAll(".childName").length + 1;
+      const input = document.createElement("div");
+      input.innerHTML = `児童名${count}：<input type="text" class="childName" required><br>`;
+      div.appendChild(input);
+    }
+
+    // 登録処理
+    document.getElementById("registerForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const parentName = document.getElementById("parentName").value;
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      const childNames = [...document.querySelectorAll(".childName")].map(input => input.value);
+
+      try {
+        // Firebase Auth にユーザー作成
+        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+        const uid = userCredential.user.uid;
+
+        // Firestore users に保護者情報追加
+        await db.collection("users").doc(uid).set({
+          name: parentName,
+          email: email,
+          role: "user",
+          children: childNames
+        });
+
+        // Firestore children に連番付きで児童追加
+        const childrenCol = db.collection("children");
+        const snapshot = await childrenCol.get();
+        let count = snapshot.size;
+
+        for (const childName of childNames) {
+          count++;
+          const childId = `child_${String(count).padStart(3, '0')}`;
+          await childrenCol.doc(childId).set({
+            name: childName,
+            status: "未設定",
+            lastUpdated: "-",
+            parentUid: uid
+          });
+        }
+
+        alert("登録が完了しました！");
+        document.getElementById("registerForm").reset();
+      } catch (error) {
+        alert("エラー：" + error.message);
+      }
+    });
+
+    <a href= "admin.html" >戻る</a>
+    
+  </script>
+</body>
+</html>
