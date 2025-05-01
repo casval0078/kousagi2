@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>学童クラブ 入退室管理</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <style>
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+    .entry { background-color: #c8f7c5; }
+    .exit { background-color: #f9d6d5; }
+  </style>
+</head>
+<body>
+  <h1>入退室管理ページ（管理者）</h1>
+  <table id="attendanceTable">
+    <thead>
+      <tr><th>児童名</th><th>ステータス</th><th>操作</th><th>最終時刻</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    // Firebase初期化
+    const firebaseConfig = {
+      apiKey: "AIzaSyDPUoZSZCBmJi7yMtIp6apBEfEJqIJWZRY",
+      authDomain: "kousagi-2e126.firebaseapp.com",
+      databaseURL: "https://kousagi-2e126-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "kousagi-2e126",
+      storageBucket: "kousagi-2e126.appspot.com",
+      messagingSenderId: "379985487644",
+      appId: "1:379985487644:web:e8ca61a2fb7cbc2fc37cd9",
+      measurementId: "G-DB225BE3JD"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // 日付・時刻取得関数
+    function getToday() {
+      return new Date().toISOString().split("T")[0]; // 例: 2025-05-01
+    }
+
+    function getTime() {
+      return new Date().toTimeString().slice(0, 5); // 例: 14:30
+    }
+
+    // ステータス更新関数
+    async function updateStatus(childId, status) {
+      const now = new Date().toLocaleString();
+      const today = getToday();
+      const time = getTime();
+
+      // Firestoreに入退室履歴を記録（children/{childId}/attendance/{日付}）
+      const attendanceRef = db.collection("children").doc(childId)
+        .collection("attendance").doc(today);
+
+      if (status === "入室") {
+        await attendanceRef.set({ entryTime: time }, { merge: true });
+      } else {
+        await attendanceRef.set({ exitTime: time }, { merge: true });
+      }
+
+      // メイン children コレクションにも最新ステータス記録
+      await db.collection("children").doc(childId).update({
+        status: status,
+        lastUpdated: now
+      });
+
+      // 画面反映
+      document.getElementById(`status-${childId}`).textContent = status;
+      document.getElementById(`time-${childId}`).textContent = now;
+    }
+
+    // 表の生成
+    async function loadChildren() {
+      const snapshot = await db.collection("children").get();
+      const tbody = document.querySelector("#attendanceTable tbody");
+      tbody.innerHTML = "";
+
+      for (const doc of snapshot.docs) {
+        const child = doc.data();
+        const childId = doc.id;
+
+        const status = child.status || "未入室";
+        const lastUpdated = child.lastUpdated || "-";
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${child.name}</td>
+          <td id="status-${childId}">${status}</td>
+          <td>
+            <button onclick="updateStatus('${childId}', '入室')">入室</button>
+            <button onclick="updateStatus('${childId}', '退出')">退出</button>
+          </td>
+          <td id="time-${childId}">${lastUpdated}</td>
+        `;
+        tbody.appendChild(tr);
+      }
+    }
+
+    <a href= "addition.html" >ユーザー追加</a>
+
+    // 初回実行
+    loadChildren();
+  </script>
+</body>
+</html>
