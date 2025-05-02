@@ -166,13 +166,15 @@ async function loadChildren() {
     const attendanceDoc = await db.collection("children").doc(childId)
       .collection("attendance").doc(today).get();
 
-    let status = "";
-    let lastUpdated = "";
+let status = "";
+let lastUpdated = "";
 
 if (attendanceDoc.exists) {
   const data = attendanceDoc.data();
-  if (data.absent === true) {
+
+  if (data.absent) {
     status = "欠席";
+    lastUpdated = `${today}`;
   } else if (data.exitTime) {
     status = "退出";
     lastUpdated = `${today} ${data.exitTime}`;
@@ -181,7 +183,6 @@ if (attendanceDoc.exists) {
     lastUpdated = `${today} ${data.entryTime}`;
   }
 }
-
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
