@@ -1,19 +1,81 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>学童クラブ 入退室管理</title>
+  <title>こうさぎクラブ 入退室管理</title>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <style>
-    table { border-collapse: collapse; width: 100%; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
-    .entry { background-color: #c8f7c5; }
-    .exit { background-color: #f9d6d5; }
+    body {
+      font-family: 'Helvetica Neue', sans-serif;
+      margin: 30px;
+      background: #f9f9f9;
+      color: #333;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+      color: #2c3e50;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      background-color: white;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 12px;
+      text-align: center;
+    }
+
+    th {
+      background-color: #2c3e50;
+      color: white;
+    }
+
+    tr:nth-child(even) {
+      background-color: #f2f2f2;
+    }
+
+    button {
+      margin: 0 4px;
+      padding: 6px 12px;
+      font-size: 14px;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+    .entry { background-color: #27ae60; color: white; }
+    .exit  { background-color: #c0392b; color: white; }
+
+    .links {
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    .links a {
+      margin: 0 10px;
+      color: #2980b9;
+      text-decoration: none;
+    }
+
+    .links a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
-  <h1>入退室管理ページ（管理者）</h1>
+  <h1>こうさぎクラブ入退室管理ページ</h1>
+
   <table id="attendanceTable">
     <thead>
       <tr><th>児童名</th><th>ステータス</th><th>操作</th><th>最終時刻</th></tr>
@@ -21,37 +83,34 @@
     <tbody></tbody>
   </table>
 
+  <div class="links">
+    <a href="addition.html">ユーザー追加・削除</a>
+    <a href="correction.html">時間修正・出力</a>
+  </div>
+
   <script>
     // Firebase初期化
     const firebaseConfig = {
       apiKey: "AIzaSyDPUoZSZCBmJi7yMtIp6apBEfEJqIJWZRY",
       authDomain: "kousagi-2e126.firebaseapp.com",
-      databaseURL: "https://kousagi-2e126-default-rtdb.asia-southeast1.firebasedatabase.app",
       projectId: "kousagi-2e126",
-      storageBucket: "kousagi-2e126.appspot.com",
-      messagingSenderId: "379985487644",
-      appId: "1:379985487644:web:e8ca61a2fb7cbc2fc37cd9",
-      measurementId: "G-DB225BE3JD"
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // 日付・時刻取得関数
     function getToday() {
-      return new Date().toISOString().split("T")[0]; // 例: 2025-05-01
+      return new Date().toISOString().split("T")[0];
     }
 
     function getTime() {
-      return new Date().toTimeString().slice(0, 5); // 例: 14:30
+      return new Date().toTimeString().slice(0, 5);
     }
 
-    // ステータス更新関数
     async function updateStatus(childId, status) {
       const now = new Date().toLocaleString();
       const today = getToday();
       const time = getTime();
 
-      // Firestoreに入退室履歴を記録（children/{childId}/attendance/{日付}）
       const attendanceRef = db.collection("children").doc(childId)
         .collection("attendance").doc(today);
 
@@ -61,48 +120,71 @@
         await attendanceRef.set({ exitTime: time }, { merge: true });
       }
 
-      // メイン children コレクションにも最新ステータス記録
       await db.collection("children").doc(childId).update({
         status: status,
         lastUpdated: now
       });
 
-      // 画面反映
       document.getElementById(`status-${childId}`).textContent = status;
       document.getElementById(`time-${childId}`).textContent = now;
     }
 
-    // 表の生成
-    async function loadChildren() {
-      const snapshot = await db.collection("children").get();
-      const tbody = document.querySelector("#attendanceTable tbody");
-      tbody.innerHTML = "";
+// 表の生成（当日のみのステータス表示）
+async function loadChildren() {
+  const snapshot = await db.collection("children").get();
+  const children = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-      for (const doc of snapshot.docs) {
-        const child = doc.data();
-        const childId = doc.id;
+  // birthYear昇順 → name五十音順でソート
+  children.sort((a, b) => {
+    if (a.birthYear !== b.birthYear) {
+      return a.birthYear - b.birthYear;
+    }
+    return a.name.localeCompare(b.name, "ja");
+  });
 
-        const status = child.status || "未入室";
-        const lastUpdated = child.lastUpdated || "-";
+  const tbody = document.querySelector("#attendanceTable tbody");
+  tbody.innerHTML = "";
 
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${child.name}</td>
-          <td id="status-${childId}">${status}</td>
-          <td>
-            <button onclick="updateStatus('${childId}', '入室')">入室</button>
-            <button onclick="updateStatus('${childId}', '退出')">退出</button>
-          </td>
-          <td id="time-${childId}">${lastUpdated}</td>
-        `;
-        tbody.appendChild(tr);
+  const today = getToday();
+
+  for (const child of children) {
+    const childId = child.id;
+
+    // 当日の出席情報取得
+    const attendanceDoc = await db.collection("children").doc(childId)
+      .collection("attendance").doc(today).get();
+
+    let status = "";
+    let lastUpdated = "";
+
+    if (attendanceDoc.exists) {
+      const data = attendanceDoc.data();
+      if (data.exitTime) {
+        status = "退出";
+        lastUpdated = `${today} ${data.exitTime}`;
+      } else if (data.entryTime) {
+        status = "入室";
+        lastUpdated = `${today} ${data.entryTime}`;
+      } else if (data.absent === true) {
+        status = "欠席";
       }
     }
 
-    // 初回実行
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${child.name}</td>
+      <td id="status-${childId}">${status}</td>
+      <td>
+        <button class="entry" onclick="updateStatus('${childId}', '入室')">入室</button>
+        <button class="exit" onclick="updateStatus('${childId}', '退出')">退出</button>
+      </td>
+      <td id="time-${childId}">${lastUpdated}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
+
     loadChildren();
   </script>
-  <a href= "addition.html" >ユーザー追加・削除</a>
-  <a href= "correction.html" >時間修正・出力</a>
 </body>
 </html>
