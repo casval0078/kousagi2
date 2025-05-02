@@ -169,18 +169,19 @@ async function loadChildren() {
     let status = "";
     let lastUpdated = "";
 
-    if (attendanceDoc.exists) {
-      const data = attendanceDoc.data();
-      if (data.exitTime) {
-        status = "退出";
-        lastUpdated = `${today} ${data.exitTime}`;
-      } else if (data.entryTime) {
-        status = "入室";
-        lastUpdated = `${today} ${data.entryTime}`;
-      } else if (data.absent === true) {
-        status = "欠席";
-      }
-    }
+if (attendanceDoc.exists) {
+  const data = attendanceDoc.data();
+  if (data.absent === true) {
+    status = "欠席";
+  } else if (data.exitTime) {
+    status = "退出";
+    lastUpdated = `${today} ${data.exitTime}`;
+  } else if (data.entryTime) {
+    status = "入室";
+    lastUpdated = `${today} ${data.entryTime}`;
+  }
+}
+
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
