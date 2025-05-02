@@ -59,26 +59,40 @@
       });
     });
 
-    async function updateStatus(childId, newStatus) {
-      const now = new Date();
-      const dateStr = now.toISOString().split('T')[0];
-      const timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+async function updateStatus(childId, newStatus) {
+  const now = new Date();
+  const dateStr = now.toISOString().split('T')[0];
+  const timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
 
-      const childRef = db.collection("children").doc(childId);
-      await childRef.update({
-        status: newStatus,
-        lastUpdated: `${dateStr} ${timeStr}`
-      });
+  const childRef = db.collection("children").doc(childId);
+  await childRef.update({
+    status: newStatus,
+    lastUpdated: `${dateStr} ${timeStr}`
+  });
 
-      await childRef.collection("attendance").doc(dateStr).set({
-        entryTime: newStatus === "入室" ? timeStr : firebase.firestore.FieldValue.delete(),
-        exitTime: newStatus === "退室" ? timeStr : firebase.firestore.FieldValue.delete(),
-        status: newStatus
-      }, { merge: true });
+  const attendanceData = {
+    status: newStatus
+  };
 
-      document.getElementById(`status-${childId}`).textContent = newStatus;
-      alert(`${newStatus}を登録しました`);
-    }
+  if (newStatus === "入室") {
+    attendanceData.entryTime = timeStr;
+    attendanceData.exitTime = firebase.firestore.FieldValue.delete();
+    attendanceData.absent = firebase.firestore.FieldValue.delete(); // ← 念のため absent を消す
+  } else if (newStatus === "退室") {
+    attendanceData.exitTime = timeStr;
+    attendanceData.entryTime = firebase.firestore.FieldValue.delete();
+    attendanceData.absent = firebase.firestore.FieldValue.delete();
+  } else if (newStatus === "欠席") {
+    attendanceData.absent = true;
+    attendanceData.entryTime = firebase.firestore.FieldValue.delete();
+    attendanceData.exitTime = firebase.firestore.FieldValue.delete();
+  }
+
+  await childRef.collection("attendance").doc(dateStr).set(attendanceData, { merge: true });
+
+  document.getElementById(`status-${childId}`).textContent = newStatus;
+  alert(`${newStatus}を登録しました`);
+}
   </script>
 </body>
 </html>
