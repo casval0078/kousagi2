@@ -110,20 +110,27 @@
       });
     });
 
-    async function updateStatus(childId, newStatus) {
-      const now = new Date();
-      const dateStr = now.toISOString().split('T')[0];
+async function updateStatus(childId, newStatus) {
+  const now = new Date();
+  const dateStr = now.toISOString().split('T')[0];
 
-      const childRef = db.collection("children").doc(childId);
+  const childRef = db.collection("children").doc(childId);
+  const FieldValue = firebase.firestore.FieldValue;
 
-      // children直下のstatusは更新しない（管理者用）
-      await childRef.collection("attendance").doc(dateStr).set({
-        status: newStatus
-      }, { merge: true });
+  let updateData = { status: newStatus };
 
-      document.getElementById(`status-${childId}`).textContent = newStatus || "";
-      alert(`ステータスを「${newStatus || "空欄"}」に更新しました`);
-    }
+  if (newStatus === "欠席") {
+    // 欠席の場合は入退室時刻を削除
+    updateData.enterTime = FieldValue.delete();
+    updateData.exitTime = FieldValue.delete();
+  }
+
+  await childRef.collection("attendance").doc(dateStr).set(updateData, { merge: true });
+
+  document.getElementById(`status-${childId}`).textContent = newStatus || "";
+  alert(`ステータスを「${newStatus || "空欄"}」に更新しました`);
+}
+
   </script>
 </body>
 </html>
