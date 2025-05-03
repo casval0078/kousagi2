@@ -44,7 +44,7 @@
 
       childrenSnapshot.forEach(doc => {
         const data = doc.data();
-        if (!childrenNames.includes(data.name)) return;
+if (!childrenNames.includes(doc.id)) return;
 
         const div = document.createElement("div");
         div.className = "child-box";
