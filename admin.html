@@ -117,29 +117,28 @@ async function updateStatus(childId, status) {
   const docSnap = await attendanceRef.get();
   const data = docSnap.exists ? docSnap.data() : {};
 
-  // ✅ すでに同じステータスが記録されていたら確認ダイアログを出す
   if ((status === "入室" && data.entryTime) || (status === "退出" && data.exitTime)) {
     const proceed = confirm(`すでに「${status}」が記録されています。\nもう一度「${status}」として記録しますか？`);
     if (!proceed) return;
   }
 
-  // 入室または退出の記録
-  if (status === "入室") {
-    await attendanceRef.set({ entryTime: time }, { merge: true });
-  } else {
-    await attendanceRef.set({ exitTime: time }, { merge: true });
-  }
-
-  // 状態の更新（このフィールドは画面表示には使ってないけど、記録用）
-  await db.collection("children").doc(childId).update({
+  // 時間とステータスをサブコレクションのドキュメントに記録
+  const updateData = {
     status: status,
     lastUpdated: now
-  });
+  };
+
+  if (status === "入室") {
+    updateData.entryTime = time;
+  } else {
+    updateData.exitTime = time;
+  }
+
+  await attendanceRef.set(updateData, { merge: true });
 
   document.getElementById(`status-${childId}`).textContent = status;
   document.getElementById(`time-${childId}`).textContent = `${today} ${time}`;
 }
-
 
 // 表の生成（当日のみのステータス表示）
 async function loadChildren() {
@@ -175,12 +174,16 @@ if (attendanceDoc.exists) {
   if (data.absent) {
     status = "欠席";
     lastUpdated = `${today}`;
-  } else if (data.exitTime) {
-    status = "退出";
-    lastUpdated = `${today} ${data.exitTime}`;
-  } else if (data.entryTime) {
-    status = "入室";
-    lastUpdated = `${today} ${data.entryTime}`;
+  } else if (data.status) {
+    status = data.status;
+
+    if (status === "入室" && data.entryTime) {
+      lastUpdated = `${today} ${data.entryTime}`;
+    } else if (status === "退出" && data.exitTime) {
+      lastUpdated = `${today} ${data.exitTime}`;
+    } else {
+      lastUpdated = `${today}`;
+    }
   }
 }
 
