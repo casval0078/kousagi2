@@ -2,19 +2,57 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>児童ステータス管理（保護者用）</title>
+  <title>欠席連絡ページ（保護者用）</title>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <style>
-    body { font-family: sans-serif; padding: 20px; }
-    .child-box { border: 1px solid #ccc; padding: 10px; margin-bottom: 15px; border-radius: 8px; }
-    button { margin: 5px; padding: 5px 10px; }
-    h2 { margin-bottom: 5px; }
+    body {
+      font-family: "Yu Gothic", sans-serif;
+      padding: 20px;
+      background-color: #f7f7f7;
+    }
+    h1 {
+      text-align: center;
+      color: #444;
+    }
+    .child-box {
+      background: #fff;
+      border-radius: 12px;
+      padding: 15px;
+      margin: 15px auto;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      max-width: 500px;
+    }
+    .child-name {
+      font-size: 1.4em;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    .status {
+      font-size: 1em;
+      margin: 8px 0;
+    }
+    button {
+      padding: 8px 16px;
+      font-size: 1em;
+      border: none;
+      border-radius: 6px;
+      margin: 5px;
+      cursor: pointer;
+    }
+    .absent-btn {
+      background-color: #f08080;
+      color: white;
+    }
+    .cancel-btn {
+      background-color: #87cefa;
+      color: white;
+    }
   </style>
 </head>
 <body>
-  <h1>児童ステータス管理（保護者用）</h1>
+  <h1>欠席連絡（保護者用）</h1>
   <div id="childrenContainer">読み込み中...</div>
 
   <script>
@@ -42,57 +80,50 @@
       const container = document.getElementById("childrenContainer");
       container.innerHTML = "";
 
-      childrenSnapshot.forEach(doc => {
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      childrenSnapshot.forEach(async doc => {
         const data = doc.data();
-if (!childrenNames.includes(doc.id)) return;
+        if (!childrenNames.includes(data.name)) return;
+
+        const attendanceDoc = await db.collection("children")
+          .doc(doc.id)
+          .collection("attendance")
+          .doc(todayStr).get();
+
+        let todayStatus = "";
+        if (attendanceDoc.exists && attendanceDoc.data().status === "欠席") {
+          todayStatus = "欠席";
+        } else if (attendanceDoc.exists && attendanceDoc.data().status) {
+          todayStatus = attendanceDoc.data().status; // 例：入室・退室
+        }
 
         const div = document.createElement("div");
         div.className = "child-box";
         div.innerHTML = `
-          <h2>${data.name}</h2>
-          <p>現在のステータス：<strong id="status-${doc.id}">${data.status}</strong></p>
-          <button onclick="updateStatus('${doc.id}', '入室')">入室</button>
-          <button onclick="updateStatus('${doc.id}', '退室')">退室</button>
-          <button onclick="updateStatus('${doc.id}', '欠席')">欠席</button>
+          <div class="child-name">${data.name}</div>
+          <div class="status">本日のステータス：<strong id="status-${doc.id}">${todayStatus}</strong></div>
+          <button class="absent-btn" onclick="updateStatus('${doc.id}', '欠席')">欠席を連絡する</button>
+          <button class="cancel-btn" onclick="updateStatus('${doc.id}', '')">欠席を取り消す</button>
         `;
         container.appendChild(div);
       });
     });
 
-async function updateStatus(childId, newStatus) {
-  const now = new Date();
-  const dateStr = now.toISOString().split('T')[0];
-  const timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+    async function updateStatus(childId, newStatus) {
+      const now = new Date();
+      const dateStr = now.toISOString().split('T')[0];
 
-  const childRef = db.collection("children").doc(childId);
-  await childRef.update({
-    status: newStatus,
-    lastUpdated: `${dateStr} ${timeStr}`
-  });
+      const childRef = db.collection("children").doc(childId);
 
-  const attendanceData = {
-    status: newStatus
-  };
+      // children直下のstatusは更新しない（管理者用）
+      await childRef.collection("attendance").doc(dateStr).set({
+        status: newStatus
+      }, { merge: true });
 
-  if (newStatus === "入室") {
-    attendanceData.entryTime = timeStr;
-    attendanceData.exitTime = firebase.firestore.FieldValue.delete();
-    attendanceData.absent = firebase.firestore.FieldValue.delete(); // ← 念のため absent を消す
-  } else if (newStatus === "退室") {
-    attendanceData.exitTime = timeStr;
-    attendanceData.entryTime = firebase.firestore.FieldValue.delete();
-    attendanceData.absent = firebase.firestore.FieldValue.delete();
-  } else if (newStatus === "欠席") {
-    attendanceData.absent = true;
-    attendanceData.entryTime = firebase.firestore.FieldValue.delete();
-    attendanceData.exitTime = firebase.firestore.FieldValue.delete();
-  }
-
-  await childRef.collection("attendance").doc(dateStr).set(attendanceData, { merge: true });
-
-  document.getElementById(`status-${childId}`).textContent = newStatus;
-  alert(`${newStatus}を登録しました`);
-}
+      document.getElementById(`status-${childId}`).textContent = newStatus || "";
+      alert(`ステータスを「${newStatus || "空欄"}」に更新しました`);
+    }
   </script>
 </body>
 </html>
