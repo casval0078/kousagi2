@@ -187,17 +187,19 @@ if (attendanceDoc.exists) {
   }
 }
 
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${child.name}</td>
-      <td id="status-${childId}">${status}</td>
-      <td>
-        <button class="entry" onclick="updateStatus('${childId}', '入室')">入室</button>
-        <button class="exit" onclick="updateStatus('${childId}', '退出')">退出</button>
-      </td>
-      <td id="time-${childId}">${lastUpdated}</td>
-    `;
-    tbody.appendChild(tr);
+const isAbsent = status === "欠席";
+
+const tr = document.createElement("tr");
+tr.innerHTML = `
+  <td>${child.name}</td>
+  <td id="status-${childId}">${status}</td>
+  <td>
+    <button class="entry" onclick="updateStatus('${childId}', '入室')" ${isAbsent ? "disabled" : ""}>入室</button>
+    <button class="exit" onclick="updateStatus('${childId}', '退出')" ${isAbsent ? "disabled" : ""}>退出</button>
+  </td>
+  <td id="time-${childId}">${lastUpdated}</td>
+`;
+tbody.appendChild(tr);
   }
 }
 
