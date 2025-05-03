@@ -2,23 +2,54 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>時間修正ページ</title>
+  <title>時間修正・出力ページ</title>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <style>
-    body { font-family: sans-serif; padding: 20px; }
-    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-    th, td { border: 1px solid #ccc; padding: 4px; text-align: center; }
-    th { background: #f0f0f0; }
-    select, button { margin: 10px 5px; padding: 5px; }
+<style>
+  body {
+    font-family: sans-serif;
+    padding: 20px;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    table-layout: fixed;
+  }
+  th, td {
+    border: 1px solid #ccc;
+    padding: 6px;
+    text-align: center;
+    vertical-align: middle;
+  }
+  thead th {
+    position: sticky;
+    top: 0;
+    background: #f0f0f0;
+    z-index: 1;
+  }
+  td:first-child, th:first-child {
+    position: sticky;
+    left: 0;
+    background: #fff;
+    z-index: 1;
+  }
+  td input {
+    width: 80px;
+    padding: 4px;
+    font-size: 14px;
+    box-sizing: border-box;
+  }
+</style>
+
   </style>
 </head>
 <body>
-  <h1>出退室時間修正</h1>
+  <h1>入退室時間修正・出力</h1>
   <label>表示月：
     <input type="month" id="monthSelect">
   </label>
-  <button onclick="downloadCSV()">CSV出力</button>
+  <button onclick="downloadCSV()">CSV出力</button><br>
   <div id="attendanceTable"></div>
 
   <script>
@@ -43,16 +74,20 @@
       const monthNum = parseInt(month.split("-")[1]);
       const daysInMonth = new Date(year, monthNum, 0).getDate();
 
-      const childrenSnap = await db.collection("children").orderBy("name").get();
+const childrenSnap = await db.collection("children").orderBy("birthYear").get();
       const children = childrenSnap.docs.map(doc => ({ id: doc.id, name: doc.data().name }));
 
-      const table = document.createElement("table");
-      let header = `<tr><th rowspan="2">日付</th>`;
-      children.forEach(child => header += `<th colspan="2">${child.name}</th>`);
-      header += `</tr><tr>`;
-      children.forEach(_ => header += `<th>入室</th><th>退室</th>`);
-      header += `</tr>`;
-      table.innerHTML = header;
+const table = document.createElement("table");
+let header1 = `<tr><th rowspan="2">日付</th>`;
+let header2 = "";
+
+children.forEach(child => {
+  header1 += `<th colspan="2">${child.name}</th>`;
+  header2 += `<th>入室</th><th>退室</th>`;
+});
+header1 += `</tr>`;
+header2 = `<tr>${header2}</tr>`;
+table.innerHTML = header1 + header2;
 
       for (let d = 1; d <= daysInMonth; d++) {
         const dateStr = `${year}-${String(monthNum).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
@@ -91,31 +126,49 @@
       tableContainer.appendChild(table);
     }
 
-    function downloadCSV() {
-      const rows = [];
-      const table = tableContainer.querySelector("table");
-      const trList = table.querySelectorAll("tr");
-      trList.forEach(tr => {
-        const cells = tr.querySelectorAll("th, td");
-        const row = [];
-        cells.forEach(cell => {
-          if (cell.querySelector("input")) {
-            row.push(cell.querySelector("input").value);
-          } else {
-            row.push(cell.textContent.trim());
-          }
-        });
-        rows.push(row.join(","));
-      });
-      const csvContent = '\uFEFF' + rows.join("\n");
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `attendance_${monthSelect.value}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
+function downloadCSV() {
+  const table = tableContainer.querySelector("table");
+  const rows = table.querySelectorAll("tr");
+
+  // ヘッダー取得（2行目の名前付き列）
+  const headerRow = rows[0];
+  const nameCells = headerRow.querySelectorAll("th[colspan='2']");
+  const header = ["日付"];
+  nameCells.forEach(cell => {
+    const name = cell.textContent.trim();
+    header.push(`${name} 入室`, `${name} 退室`);
+  });
+
+  const csv = [header];
+
+  // データ行の処理（3行目以降がデータ）
+  for (let i = 2; i < rows.length; i++) {
+    const row = [];
+    const cells = rows[i].querySelectorAll("td");
+
+    // 最初のセル（日付）
+    row.push(cells[0].textContent.trim());
+
+    // 残りのセル（入退室）
+    for (let j = 1; j < cells.length; j++) {
+      const input = cells[j].querySelector("input");
+      const val = input ? input.value.trim() : "";
+      row.push(val === "" ? "欠席" : val);
     }
+
+    csv.push(row);
+  }
+
+  // CSV作成＆ダウンロード
+  const csvContent = '\uFEFF' + csv.map(row => row.join(",")).join("\n");
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `attendance_${monthSelect.value}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
   </script>
 </body>
 </html>
