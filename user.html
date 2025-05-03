@@ -121,7 +121,7 @@ async function updateStatus(childId, newStatus) {
 
   if (newStatus === "欠席") {
     // 欠席の場合は入退室時刻を削除
-    updateData.enterTime = FieldValue.delete();
+    updateData.entryTime = FieldValue.delete();
     updateData.exitTime = FieldValue.delete();
   }
 
