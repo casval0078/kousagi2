@@ -112,23 +112,24 @@ auth.onAuthStateChanged(async (user) => {
   });
 });
 
-    async function updateStatus(uid, childId, newStatus) {
-      const now = new Date();
-      const dateStr = now.toISOString().split('T')[0];
-      const childRef = db.collection("users").doc(uid).collection("children").doc(childId);
-      const FieldValue = firebase.firestore.FieldValue;
+async function updateStatus(childId, newStatus) {
+  const now = new Date();
+  const dateStr = now.toISOString().split('T')[0];
+  const childRef = db.collection("children").doc(childId);
+  const FieldValue = firebase.firestore.FieldValue;
 
-      let updateData = { status: newStatus };
-      if (newStatus === "欠席") {
-        updateData.entryTime = FieldValue.delete();
-        updateData.exitTime = FieldValue.delete();
-      }
+  let updateData = { status: newStatus };
+  if (newStatus === "欠席") {
+    updateData.entryTime = FieldValue.delete();
+    updateData.exitTime = FieldValue.delete();
+  }
 
-      await childRef.collection("attendance").doc(dateStr).set(updateData, { merge: true });
+  await childRef.collection("attendance").doc(dateStr).set(updateData, { merge: true });
 
-      document.getElementById(`status-${childId}`).textContent = newStatus || "";
-      alert(`ステータスを「${newStatus || "空欄"}」に更新しました`);
-    }
+  document.getElementById(`status-${childId}`).textContent = newStatus || "";
+  alert(`ステータスを「${newStatus || "空欄"}」に更新しました`);
+}
+
   </script>
 </body>
 </html>
