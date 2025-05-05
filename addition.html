@@ -12,11 +12,9 @@
       padding: 20px;
       background-color: #f9f9f9;
     }
-
     h1 {
       margin-bottom: 20px;
     }
-
     form {
       background: #fff;
       padding: 20px;
@@ -24,38 +22,31 @@
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
       max-width: 600px;
     }
-
     .form-section {
       margin-bottom: 20px;
     }
-
     label {
       display: block;
       margin-bottom: 10px;
     }
-
     input {
       padding: 5px;
       width: 95%;
       max-width: 400px;
     }
-
     .description {
       font-size: 0.9em;
       color: #666;
       margin-bottom: 10px;
     }
-
     button {
       margin-right: 10px;
       padding: 8px 16px;
       cursor: pointer;
     }
-
     #childrenInputs > div {
       margin-bottom: 10px;
     }
-
     a {
       display: inline-block;
       margin-top: 20px;
@@ -69,11 +60,9 @@
       <label>保護者名：<br>
         <input type="text" id="parentName" required>
       </label>
-
       <label>メールアドレス：<br>
         <input type="email" id="email" required>
       </label>
-
       <label>パスワード：<br>
         <input type="password" id="password" required>
       </label>
@@ -101,24 +90,6 @@
     <button type="button" onclick="deleteChildren()">削除</button>
   </form>
 
-<hr>
-<h2>既存保護者に児童を追加</h2>
-<div class="form-section">
-  <label>保護者名：<br>
-    <input type="text" id="existingParentName">
-  </label>
-
-  <label>児童名：<br>
-    <input type="text" id="newChildName">
-  </label>
-
-  <label>生年：<br>
-    <input type="number" id="newBirthYear" min="1900" max="2100">
-  </label>
-
-  <button onclick="addChildToExistingParent()">児童を追加</button>
-</div>
-  
   <a href="admin.html">← 戻る</a>
 
   <script>
@@ -161,11 +132,13 @@
       }));
 
       try {
+        // Firebase Auth にユーザーを作成
         const userCredential = await auth.createUserWithEmailAndPassword(email, password);
         const uid = userCredential.user.uid;
 
         const childNames = childDataList.map(child => child.name);
 
+        // ユーザー情報を users コレクションに保存
         await db.collection("users").doc(uid).set({
           name: parentName,
           email: email,
@@ -174,12 +147,15 @@
         });
 
         const childrenCol = db.collection("children");
-        const snapshot = await childrenCol.get();
-        let count = snapshot.size;
 
+        // 保護者に紐づく既存の児童数を取得
+        const existingChildrenSnapshot = await childrenCol.where("parentUid", "==", uid).get();
+        let existingCount = existingChildrenSnapshot.size;
+
+        // 新しい児童を順に追加（上書きされないように）
         for (const child of childDataList) {
-          count++;
-          const childId = `child_${String(count).padStart(3, '0')}`;
+          existingCount++;
+          const childId = `child_${uid}_${String(existingCount).padStart(3, '0')}`;
           await childrenCol.doc(childId).set({
             name: child.name,
             birthYear: child.birthYear,
@@ -231,55 +207,6 @@
         alert("削除エラー：" + error.message);
       }
     }
-
-    async function addChildToExistingParent() {
-  const parentName = document.getElementById("existingParentName").value.trim();
-  const newChildName = document.getElementById("newChildName").value.trim();
-  const newBirthYear = parseInt(document.getElementById("newBirthYear").value);
-
-  if (!parentName || !newChildName || isNaN(newBirthYear)) {
-    alert("全ての項目を入力してください。");
-    return;
-  }
-
-  try {
-    // 保護者を検索してUID取得
-    const usersSnapshot = await db.collection("users").where("name", "==", parentName).get();
-    if (usersSnapshot.empty) {
-      alert("保護者が見つかりません。");
-      return;
-    }
-
-    const userDoc = usersSnapshot.docs[0];
-    const uid = userDoc.id;
-
-    // `users` ドキュメントの `children` 配列に児童名を追加
-    await db.collection("users").doc(uid).update({
-      children: firebase.firestore.FieldValue.arrayUnion(newChildName)
-    });
-
-    // `children` コレクションの次のID取得
-    const snapshot = await db.collection("children").get();
-    const childId = `child_${String(snapshot.size + 1).padStart(3, '0')}`;
-
-    // 児童データを `children` に追加
-    await db.collection("children").doc(childId).set({
-      name: newChildName,
-      birthYear: newBirthYear,
-      status: "未設定",
-      lastUpdated: "-",
-      parentUid: uid
-    });
-
-    alert(`児童「${newChildName}」を追加しました！`);
-    document.getElementById("existingParentName").value = "";
-    document.getElementById("newChildName").value = "";
-    document.getElementById("newBirthYear").value = "";
-  } catch (error) {
-    alert("追加エラー：" + error.message);
-  }
-}
-
   </script>
 </body>
 </html>
