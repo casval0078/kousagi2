@@ -73,64 +73,56 @@
       }
 
       const uid = user.uid;
-      const userDoc = await db.collection("users").doc(uid).get();
-      const childrenNames = userDoc.data().children;
-
-      const childrenSnapshot = await db.collection("children").get();
+      const childrenSnapshot = await db.collection("users").doc(uid).collection("children").get();
       const container = document.getElementById("childrenContainer");
       container.innerHTML = "";
 
       const todayStr = new Date().toISOString().split('T')[0];
 
-      childrenSnapshot.forEach(async doc => {
+      childrenSnapshot.forEach(async (doc) => {
         const data = doc.data();
-        if (!childrenNames.includes(data.name)) return;
+        const childId = doc.id;
 
-        const attendanceDoc = await db.collection("children")
-          .doc(doc.id)
-          .collection("attendance")
-          .doc(todayStr).get();
+        const attendanceDoc = await db.collection("users").doc(uid)
+          .collection("children").doc(childId)
+          .collection("attendance").doc(todayStr).get();
 
         let todayStatus = "";
         if (attendanceDoc.exists && attendanceDoc.data().status === "欠席") {
           todayStatus = "欠席";
         } else if (attendanceDoc.exists && attendanceDoc.data().status) {
-          todayStatus = attendanceDoc.data().status; // 例：入室・退室
+          todayStatus = attendanceDoc.data().status;
         }
 
         const div = document.createElement("div");
         div.className = "child-box";
         div.innerHTML = `
           <div class="child-name">${data.name}</div>
-          <div class="status">本日のステータス：<strong id="status-${doc.id}">${todayStatus}</strong></div>
-          <button class="absent-btn" onclick="updateStatus('${doc.id}', '欠席')">欠席を連絡する</button>
-          <button class="cancel-btn" onclick="updateStatus('${doc.id}', '')">欠席を取り消す</button>
+          <div class="status">本日のステータス：<strong id="status-${childId}">${todayStatus}</strong></div>
+          <button class="absent-btn" onclick="updateStatus('${uid}', '${childId}', '欠席')">欠席を連絡する</button>
+          <button class="cancel-btn" onclick="updateStatus('${uid}', '${childId}', '')">欠席を取り消す</button>
         `;
         container.appendChild(div);
       });
     });
 
-async function updateStatus(childId, newStatus) {
-  const now = new Date();
-  const dateStr = now.toISOString().split('T')[0];
+    async function updateStatus(uid, childId, newStatus) {
+      const now = new Date();
+      const dateStr = now.toISOString().split('T')[0];
+      const childRef = db.collection("users").doc(uid).collection("children").doc(childId);
+      const FieldValue = firebase.firestore.FieldValue;
 
-  const childRef = db.collection("children").doc(childId);
-  const FieldValue = firebase.firestore.FieldValue;
+      let updateData = { status: newStatus };
+      if (newStatus === "欠席") {
+        updateData.entryTime = FieldValue.delete();
+        updateData.exitTime = FieldValue.delete();
+      }
 
-  let updateData = { status: newStatus };
+      await childRef.collection("attendance").doc(dateStr).set(updateData, { merge: true });
 
-  if (newStatus === "欠席") {
-    // 欠席の場合は入退室時刻を削除
-    updateData.entryTime = FieldValue.delete();
-    updateData.exitTime = FieldValue.delete();
-  }
-
-  await childRef.collection("attendance").doc(dateStr).set(updateData, { merge: true });
-
-  document.getElementById(`status-${childId}`).textContent = newStatus || "";
-  alert(`ステータスを「${newStatus || "空欄"}」に更新しました`);
-}
-
+      document.getElementById(`status-${childId}`).textContent = newStatus || "";
+      alert(`ステータスを「${newStatus || "空欄"}」に更新しました`);
+    }
   </script>
 </body>
 </html>
