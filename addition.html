@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>保護者登録フォーム</title>
+  <title>保護者・児童登録と編集</title>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -12,108 +12,60 @@
       padding: 20px;
       background-color: #f9f9f9;
     }
-    h1 {
-      margin-bottom: 20px;
-    }
     form {
       background: #fff;
       padding: 20px;
       border-radius: 10px;
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
-      max-width: 600px;
+      max-width: 700px;
+      margin-bottom: 30px;
     }
-    .form-section {
-      margin-bottom: 20px;
-    }
-    label {
-      display: block;
-      margin-bottom: 10px;
-    }
-    input {
-      padding: 5px;
-      width: 95%;
-      max-width: 400px;
-    }
-    .description {
-      font-size: 0.9em;
-      color: #666;
-      margin-bottom: 10px;
-    }
-    button {
-      margin-right: 10px;
-      padding: 8px 16px;
-      cursor: pointer;
-    }
-    #childrenInputs > div {
-      margin-bottom: 10px;
-    }
-    a {
-      display: inline-block;
-      margin-top: 20px;
-    }
+    label { display: block; margin: 10px 0 5px; }
+    input { padding: 5px; width: 90%; }
+    button { margin-top: 10px; }
+    .child-entry { border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; }
+    .child-entry button { background: red; color: white; border: none; margin-left: 10px; cursor: pointer; }
   </style>
 </head>
 <body>
-  <h1>保護者登録</h1>
+  <h1>保護者登録・児童編集ページ</h1>
+
   <form id="registerForm">
-    <div class="form-section">
-      <label>保護者名：<br>
-        <input type="text" id="parentName" required>
-      </label>
-      <label>メールアドレス：<br>
-        <input type="email" id="email" required>
-      </label>
-      <label>パスワード：<br>
-        <input type="password" id="password" required>
-      </label>
-      <div class="description">※ パスワードは英数字6文字以上で入力してください</div>
-    </div>
+    <label>保護者名：<input type="text" id="parentName" required></label>
+    <label>メールアドレス：<input type="email" id="email" required></label>
+    <label>パスワード（新規登録時のみ）：<input type="password" id="password"></label>
 
-    <div class="form-section">
-      <label>児童情報：</label>
-      <div id="childrenInputs">
-        <div>
-          <label>
-            児童名1：<br>
-            <input type="text" class="childName" required><br>
-            生年：<br>
-            <input type="number" class="birthYear" min="1900" max="2100" required>
-          </label>
-        </div>
-      </div>
-      <button type="button" onclick="addChildInput()">児童を追加</button>
-    </div>
+    <h3>新規児童追加</h3>
+    <div id="newChildrenInputs"></div>
+    <button type="button" onclick="addChildInput()">児童を追加</button>
 
-    <div class="description">※ 児童を削除するには、保護者名と児童名を入力して「削除」ボタンを押してください</div>
-
-    <button type="submit">登録</button>
-    <button type="button" onclick="deleteChildren()">削除</button>
+    <button type="submit">保護者ごと登録</button>
   </form>
 
-  <a href="admin.html">← 戻る</a>
+  <h2>既存児童の表示・削除</h2>
+  <label>保護者メールアドレスで検索：<input type="email" id="searchEmail"></label>
+  <button onclick="loadExistingChildren()">検索</button>
+  <div id="existingChildren"></div>
 
   <script>
-    // Firebase初期化
     const firebaseConfig = {
       apiKey: "AIzaSyDPUoZSZCBmJi7yMtIp6apBEfEJqIJWZRY",
       authDomain: "kousagi-2e126.firebaseapp.com",
-      projectId: "kousagi-2e126",
+      projectId: "kousagi-2e126"
     };
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
 
     function addChildInput() {
-      const div = document.getElementById("childrenInputs");
-      const count = div.querySelectorAll(".childName").length + 1;
-      const input = document.createElement("div");
-      input.innerHTML = `
-        <label>児童名${count}：<br>
-          <input type="text" class="childName" required><br>
-          生年：<br>
-          <input type="number" class="birthYear" min="1900" max="2100" required>
-        </label>`;
-      div.appendChild(input);
+      const container = document.getElementById("newChildrenInputs");
+      const div = document.createElement("div");
+      div.innerHTML = `
+        <div>
+          <label>児童名：<input type="text" class="childName" required></label>
+          <label>生年：<input type="number" class="birthYear" min="1900" max="2100" required></label>
+        </div>`;
+      container.appendChild(div);
     }
 
     document.getElementById("registerForm").addEventListener("submit", async (e) => {
@@ -122,40 +74,43 @@
       const parentName = document.getElementById("parentName").value;
       const email = document.getElementById("email").value;
       const password = document.getElementById("password").value;
-
-      const childInputs = [...document.querySelectorAll(".childName")];
+      const childNames = [...document.querySelectorAll(".childName")];
       const birthYears = [...document.querySelectorAll(".birthYear")];
 
-      const childDataList = childInputs.map((input, i) => ({
-        name: input.value,
+      const children = childNames.map((el, i) => ({
+        name: el.value,
         birthYear: parseInt(birthYears[i].value)
       }));
 
       try {
-        // Firebase Auth にユーザーを作成
-        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-        const uid = userCredential.user.uid;
+        let uid;
+        const existing = await auth.fetchSignInMethodsForEmail(email);
+        if (existing.length === 0 && password) {
+          const user = await auth.createUserWithEmailAndPassword(email, password);
+          uid = user.user.uid;
+        } else {
+          const snapshot = await db.collection("users").where("email", "==", email).get();
+          if (!snapshot.empty) {
+            uid = snapshot.docs[0].id;
+          } else {
+            alert("登録済みの場合はパスワード不要です。保護者情報が見つかりません。");
+            return;
+          }
+        }
 
-        const childNames = childDataList.map(child => child.name);
-
-        // ユーザー情報を users コレクションに保存
         await db.collection("users").doc(uid).set({
           name: parentName,
           email: email,
-          role: "user",
-          children: childNames
-        });
+          role: "user"
+        }, { merge: true });
 
         const childrenCol = db.collection("children");
+        const existingChildren = await childrenCol.where("parentUid", "==", uid).get();
+        let currentCount = existingChildren.size;
 
-        // 保護者に紐づく既存の児童数を取得
-        const existingChildrenSnapshot = await childrenCol.where("parentUid", "==", uid).get();
-        let existingCount = existingChildrenSnapshot.size;
-
-        // 新しい児童を順に追加（上書きされないように）
-        for (const child of childDataList) {
-          existingCount++;
-          const childId = `child_${uid}_${String(existingCount).padStart(3, '0')}`;
+        for (const child of children) {
+          currentCount++;
+          const childId = `child_${uid}_${String(currentCount).padStart(3, '0')}`;
           await childrenCol.doc(childId).set({
             name: child.name,
             birthYear: child.birthYear,
@@ -165,46 +120,61 @@
           });
         }
 
-        alert("登録が完了しました！");
+        alert("登録・追加が完了しました");
         document.getElementById("registerForm").reset();
-      } catch (error) {
-        alert("エラー：" + error.message);
+        document.getElementById("newChildrenInputs").innerHTML = "";
+        loadExistingChildren();
+
+      } catch (err) {
+        alert("エラー: " + err.message);
       }
     });
 
-    async function deleteChildren() {
-      const parentName = document.getElementById("parentName").value;
-      const childNames = [...document.querySelectorAll(".childName")].map(input => input.value);
-
-      if (!parentName || childNames.length === 0) {
-        alert("保護者名と児童名を入力してください。");
-        return;
-      }
+    async function loadExistingChildren() {
+      const email = document.getElementById("searchEmail").value;
+      const container = document.getElementById("existingChildren");
+      container.innerHTML = "読み込み中...";
 
       try {
-        const usersSnapshot = await db.collection("users").where("name", "==", parentName).get();
-        if (usersSnapshot.empty) {
-          alert("該当する保護者が見つかりません。");
+        const userSnap = await db.collection("users").where("email", "==", email).get();
+        if (userSnap.empty) {
+          container.innerHTML = "保護者が見つかりません。";
           return;
         }
 
-        const parentUid = usersSnapshot.docs[0].id;
+        const uid = userSnap.docs[0].id;
+        const childSnap = await db.collection("children").where("parentUid", "==", uid).get();
 
-        const childrenSnapshot = await db.collection("children").where("parentUid", "==", parentUid).get();
-        const targetChildren = childrenSnapshot.docs.filter(doc => childNames.includes(doc.data().name));
-
-        if (targetChildren.length === 0) {
-          alert("該当する児童が見つかりません。");
+        if (childSnap.empty) {
+          container.innerHTML = "登録された児童はいません。";
           return;
         }
 
-        for (const childDoc of targetChildren) {
-          await db.collection("children").doc(childDoc.id).delete();
-        }
+        container.innerHTML = "";
+        childSnap.forEach(doc => {
+          const data = doc.data();
+          const div = document.createElement("div");
+          div.className = "child-entry";
+          div.innerHTML = `
+            <strong>${data.name}</strong>（${data.birthYear}年生）
+            <button onclick="deleteChild('${doc.id}')">削除</button>
+          `;
+          container.appendChild(div);
+        });
 
-        alert("児童の削除が完了しました！");
-      } catch (error) {
-        alert("削除エラー：" + error.message);
+      } catch (e) {
+        container.innerHTML = "読み込みエラー: " + e.message;
+      }
+    }
+
+    async function deleteChild(childId) {
+      if (!confirm("この児童を削除しますか？")) return;
+      try {
+        await db.collection("children").doc(childId).delete();
+        alert("削除しました");
+        loadExistingChildren();
+      } catch (e) {
+        alert("削除エラー: " + e.message);
       }
     }
   </script>
