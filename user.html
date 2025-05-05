@@ -65,46 +65,52 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    auth.onAuthStateChanged(async (user) => {
-      if (!user) {
-        alert("ログインしてください");
-        location.href = "login.html";
-        return;
-      }
+auth.onAuthStateChanged(async (user) => {
+  if (!user) {
+    alert("ログインしてください");
+    location.href = "login.html";
+    return;
+  }
 
-      const uid = user.uid;
-      const childrenSnapshot = await db.collection("users").doc(uid).collection("children").get();
-      const container = document.getElementById("childrenContainer");
-      container.innerHTML = "";
+  const uid = user.uid; // 保護者のUID
+  const container = document.getElementById("childrenContainer");
+  container.innerHTML = "";
 
-      const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = new Date().toISOString().split('T')[0];
 
-      childrenSnapshot.forEach(async (doc) => {
-        const data = doc.data();
-        const childId = doc.id;
+  // 子供の一覧を取得（parentUidが一致する子のみ）
+  const childrenSnapshot = await db.collection("children")
+    .where("parentUid", "==", uid)
+    .get();
 
-        const attendanceDoc = await db.collection("users").doc(uid)
-          .collection("children").doc(childId)
-          .collection("attendance").doc(todayStr).get();
+  childrenSnapshot.forEach(async (doc) => {
+    const data = doc.data();
+    const childId = doc.id;
 
-        let todayStatus = "";
-        if (attendanceDoc.exists && attendanceDoc.data().status === "欠席") {
-          todayStatus = "欠席";
-        } else if (attendanceDoc.exists && attendanceDoc.data().status) {
-          todayStatus = attendanceDoc.data().status;
-        }
+    const attendanceDoc = await db.collection("children")
+      .doc(childId)
+      .collection("attendance")
+      .doc(todayStr)
+      .get();
 
-        const div = document.createElement("div");
-        div.className = "child-box";
-        div.innerHTML = `
-          <div class="child-name">${data.name}</div>
-          <div class="status">本日のステータス：<strong id="status-${childId}">${todayStatus}</strong></div>
-          <button class="absent-btn" onclick="updateStatus('${uid}', '${childId}', '欠席')">欠席を連絡する</button>
-          <button class="cancel-btn" onclick="updateStatus('${uid}', '${childId}', '')">欠席を取り消す</button>
-        `;
-        container.appendChild(div);
-      });
-    });
+    let todayStatus = "";
+    if (attendanceDoc.exists && attendanceDoc.data().status === "欠席") {
+      todayStatus = "欠席";
+    } else if (attendanceDoc.exists && attendanceDoc.data().status) {
+      todayStatus = attendanceDoc.data().status;
+    }
+
+    const div = document.createElement("div");
+    div.className = "child-box";
+    div.innerHTML = `
+      <div class="child-name">${data.name}</div>
+      <div class="status">本日のステータス：<strong id="status-${childId}">${todayStatus}</strong></div>
+      <button class="absent-btn" onclick="updateStatus('${childId}', '欠席')">欠席を連絡する</button>
+      <button class="cancel-btn" onclick="updateStatus('${childId}', '')">欠席を取り消す</button>
+    `;
+    container.appendChild(div);
+  });
+});
 
     async function updateStatus(uid, childId, newStatus) {
       const now = new Date();
