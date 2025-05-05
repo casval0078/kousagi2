@@ -101,6 +101,24 @@
     <button type="button" onclick="deleteChildren()">削除</button>
   </form>
 
+<hr>
+<h2>既存保護者に児童を追加</h2>
+<div class="form-section">
+  <label>保護者名：<br>
+    <input type="text" id="existingParentName">
+  </label>
+
+  <label>児童名：<br>
+    <input type="text" id="newChildName">
+  </label>
+
+  <label>生年：<br>
+    <input type="number" id="newBirthYear" min="1900" max="2100">
+  </label>
+
+  <button onclick="addChildToExistingParent()">児童を追加</button>
+</div>
+  
   <a href="admin.html">← 戻る</a>
 
   <script>
@@ -213,6 +231,55 @@
         alert("削除エラー：" + error.message);
       }
     }
+
+    async function addChildToExistingParent() {
+  const parentName = document.getElementById("existingParentName").value.trim();
+  const newChildName = document.getElementById("newChildName").value.trim();
+  const newBirthYear = parseInt(document.getElementById("newBirthYear").value);
+
+  if (!parentName || !newChildName || isNaN(newBirthYear)) {
+    alert("全ての項目を入力してください。");
+    return;
+  }
+
+  try {
+    // 保護者を検索してUID取得
+    const usersSnapshot = await db.collection("users").where("name", "==", parentName).get();
+    if (usersSnapshot.empty) {
+      alert("保護者が見つかりません。");
+      return;
+    }
+
+    const userDoc = usersSnapshot.docs[0];
+    const uid = userDoc.id;
+
+    // `users` ドキュメントの `children` 配列に児童名を追加
+    await db.collection("users").doc(uid).update({
+      children: firebase.firestore.FieldValue.arrayUnion(newChildName)
+    });
+
+    // `children` コレクションの次のID取得
+    const snapshot = await db.collection("children").get();
+    const childId = `child_${String(snapshot.size + 1).padStart(3, '0')}`;
+
+    // 児童データを `children` に追加
+    await db.collection("children").doc(childId).set({
+      name: newChildName,
+      birthYear: newBirthYear,
+      status: "未設定",
+      lastUpdated: "-",
+      parentUid: uid
+    });
+
+    alert(`児童「${newChildName}」を追加しました！`);
+    document.getElementById("existingParentName").value = "";
+    document.getElementById("newChildName").value = "";
+    document.getElementById("newBirthYear").value = "";
+  } catch (error) {
+    alert("追加エラー：" + error.message);
+  }
+}
+
   </script>
 </body>
 </html>
