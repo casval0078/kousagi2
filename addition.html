@@ -37,7 +37,7 @@
 
     <h3>新規児童追加</h3>
     <div id="newChildrenInputs"></div>
-    <button type="button" onclick="addChildInput()">児童を追加</button>
+    <button type="button" onclick="addChildInput()">児童枠を追加</button>
 
     <button type="submit">保護者ごと登録</button>
   </form>
@@ -46,7 +46,8 @@
   <label>保護者メールアドレスで検索：<input type="email" id="searchEmail"></label>
   <button onclick="loadExistingChildren()">検索</button>
   <div id="existingChildren"></div>
-
+  <br>
+    <a href="admin.html">← 戻る</a><br>
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyDPUoZSZCBmJi7yMtIp6apBEfEJqIJWZRY",
